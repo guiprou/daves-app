@@ -175,16 +175,24 @@ class TaskDialog extends connect(store)(LitElement) {
 
   _saveTask() {
     if (this.name != '' && this.person != {} && this.project != {} && this.from != '' && this.to != '') {
-      var task = {
-        id: this.task.id,
-        name: this.name,
-        personId: this.person.id,
-        projectId: this.project.id,
-        from: moment(this.from).toDate(),
-        to: moment(this.to).toDate()
-      };
-      this.task = task;
-      this.dispatchEvent(new CustomEvent('save-task', {detail: {task: task}}));
+      if (moment(this.from) < moment(this.to)) {
+        var task = {
+          id: this.task.id,
+          name: this.name,
+          personId: this.person.id,
+          projectId: this.project.id,
+          from: moment(this.from).toDate(),
+          to: moment(this.to).toDate()
+        };
+        this.task = task;
+        this.dispatchEvent(new CustomEvent('save-task', {detail: {task: task}}));
+      } else {
+        var level = 'warning';
+        var message = 'Please, make sure end time is after start time.';
+        // this.dispatchEvent(new CustomEvent('notify', {detail: {level: level, message: message}}));
+        store.dispatch(setNotification(level, message));
+        console.log(message);
+      }
     } else {
       var level = 'warning';
       var message = 'Please, make sure fields are not empty.';
