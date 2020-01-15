@@ -1,17 +1,6 @@
-/**
-@license
-Copyright (c) 2018 The Polymer Project Authors. All rights reserved.
-This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
-The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
-The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
-Code distributed by Google as part of the polymer project is also
-subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
-*/
+import { css } from 'lit-element';
 
-import { html } from '@polymer/lit-element';
-
-export const SharedStyles = html`
-<style>
+export const SharedStyles = css`
   :host {
     display: block;
     box-sizing: border-box;
@@ -25,8 +14,6 @@ export const SharedStyles = html`
     background-color: #fff;
     box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 1px 5px 0 rgba(0, 0, 0, 0.12), 0 3px 1px -2px rgba(0, 0, 0, 0.2);
   }
-
-
 
   h1 {
     margin: 16px 0;
@@ -49,18 +36,6 @@ export const SharedStyles = html`
     background: var(--app-section-even-color);
   }
 
-  /* h2 {
-    font-size: 24px;
-    text-align: center;
-    color: var(--app-dark-text-color);
-  }
-
-  @media (min-width: 460px) {
-    h2 {
-      font-size: 36px;
-    }
-  } */
-
   .circle {
     display: inline-block;
     width: 64px;
@@ -72,5 +47,4 @@ export const SharedStyles = html`
     font-size: 30px;
     line-height: 64px;
   }
-</style>
 `;

@@ -1,67 +1,170 @@
-/**
-@license
-Copyright (c) 2018 The Polymer Project Authors. All rights reserved.
-This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
-The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
-The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
-Code distributed by Google as part of the polymer project is also
-subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
-*/
-
-import { LitElement, html } from '@polymer/lit-element';
-import { setPassiveTouchGestures } from '@polymer/polymer/lib/utils/settings.js';
-import { connect } from 'pwa-helpers/connect-mixin.js';
-import { installMediaQueryWatcher } from 'pwa-helpers/media-query.js';
-import { installOfflineWatcher } from 'pwa-helpers/network.js';
-import { installRouter } from 'pwa-helpers/router.js';
-import { updateMetadata } from 'pwa-helpers/metadata.js';
-
-// This element is connected to the Redux store.
-import { store } from '../store.js';
-
-// We are lazy loading its reducer.
-import tasksReducer from '../reducers/tasks-reducer.js';
-import peopleReducer from '../reducers/people-reducer.js';
-import projectsReducer from '../reducers/projects-reducer.js';
-import notificationReducer from '../reducers/notification-reducer.js';
-store.addReducers({
-  tasksReducer,
-  peopleReducer,
-  projectsReducer,
-  notificationReducer
-});
-
-// These are the actions needed by this element.
+import { LitElement, html, css } from 'lit-element';
+import { setPassiveTouchGestures } from '@polymer/polymer/lib/utils/settings';
+import { connect } from 'pwa-helpers/connect-mixin';
+import { installMediaQueryWatcher } from 'pwa-helpers/media-query';
+import { installOfflineWatcher } from 'pwa-helpers/network';
+import { installRouter } from 'pwa-helpers/router';
+import { updateMetadata } from 'pwa-helpers/metadata';
+import '@polymer/app-layout/app-drawer/app-drawer';
+import '@polymer/app-layout/app-header/app-header';
+import '@polymer/app-layout/app-scroll-effects/effects/waterfall';
+import '@polymer/app-layout/app-toolbar/app-toolbar';
+import '@polymer/paper-toast/paper-toast';
+import { menuIcon } from './my-icons';
+import './login-dialog';
+import { store } from '../store';
 import {
   navigate,
   updateOffline,
   updateDrawerState,
-  updateLayout
-} from '../actions/app.js';
+  updateLayout,
+} from '../actions/app';
+import tasksReducer from '../reducers/tasks-reducer';
+import peopleReducer from '../reducers/people-reducer';
+import projectsReducer from '../reducers/projects-reducer';
+import notificationReducer from '../reducers/notification-reducer';
 
-// These are the elements needed by this element.
-import '@polymer/app-layout/app-drawer/app-drawer.js';
-import '@polymer/app-layout/app-header/app-header.js';
-import '@polymer/app-layout/app-scroll-effects/effects/waterfall.js';
-import '@polymer/app-layout/app-toolbar/app-toolbar.js';
-import '@polymer/paper-toast/paper-toast.js'
-import { menuIcon } from './my-icons.js';
-import './login-dialog.js';
-
+store.addReducers({
+  tasksReducer,
+  peopleReducer,
+  projectsReducer,
+  notificationReducer,
+});
 
 class DavesApp extends connect(store)(LitElement) {
-  _render({appTitle, _page, _drawerOpened, _snackbarOpened, _offline, logged}) {
+  static get properties() {
+    return {
+      appTitle: { type: String },
+      _page: { type: String },
+      _drawerOpened: { type: Boolean },
+      _snackbarOpened: { type: Boolean },
+      _offline: { tyoe: Boolean },
+      notification: { type: Object },
+      logged: { type: Boolean },
+    };
+  }
 
-      var hidden = logged ? "visible" : "hidden"
+  constructor() {
+    super();
+    // To force all event listeners for gestures to be passive.
+    // See https://www.polymer-project.org/2.0/docs/devguide/gesture-events#use-passive-gesture-listeners
+    setPassiveTouchGestures(true);
+    this.notification = {
+      level: '',
+      message: '',
+      duration: 3000,
+    };
+    this.logged = true;
+  }
 
-    // Anything that's related to rendering should be done in here.
+  firstUpdated() {
+    installRouter((location) => store.dispatch(navigate(location)));
+    installOfflineWatcher((offline) => store.dispatch(updateOffline(offline)));
+    installMediaQueryWatcher('(min-width: 648px) and (min-height: 648px)',
+      (matches) => store.dispatch(updateLayout(matches)));
+  }
+
+  updated(changedProperties) {
+    const {
+      appTitle,
+      _page,
+    } = this;
+    if (changedProperties.has('_page')) {
+      const pageTitle = `${appTitle} - ${_page}`;
+      updateMetadata({
+        title: pageTitle,
+        description: pageTitle,
+      });
+    }
+  }
+
+  stateChanged(state) {
+    this._page = state.app.page;
+    this._offline = state.app.offline;
+    this._snackbarOpened = state.app.snackbarOpened;
+    this._drawerOpened = state.app.drawerOpened;
+    if (this.notification !== state.notificationReducer.notification
+      && Object.keys(state.notificationReducer.notification).length !== 0
+      && state.notificationReducer.notification.constructor === Object) {
+      this.notification = state.notificationReducer.notification;
+      this.notify(state.notificationReducer.notification.level,
+        state.notificationReducer.notification.message);
+    }
+  }
+
+  render() {
+    const {
+      appTitle,
+      _page,
+      _drawerOpened,
+      logged,
+    } = this;
+
+    const hidden = logged ? 'visible' : 'hidden';
     return html`
-    <style>
+    <login-dialog on-logged-change='${(e) => { this.loggedChanged(e); }}'></login-dialog>
+
+    <!-- Header -->
+    <app-header condenses reveals effects="waterfall">
+      <app-toolbar class="toolbar-top">
+        <button class="menu-btn" title="Menu" on-click="${() => store.dispatch(updateDrawerState(true))}">${menuIcon}</button>
+        <div main-title><img class="menu-logo" src="./images/dapp_logo.png" alt=${appTitle} width="100" height="50"></div>
+      </app-toolbar>
+      <!-- This gets hidden on a small screen-->
+      <nav class="toolbar-list" sticky>
+        <a ?selected="${_page === 'schedule'}" href="/schedule-view">Schedule</a>
+        <a ?selected="${_page === 'people'}" href="/people-view">People</a>
+        <a ?selected="${_page === 'projects'}" href="/projects-view">Projects</a>
+      </nav>
+    </app-header>
+
+    <!-- Drawer content -->
+    <app-drawer .opened="${_drawerOpened}"
+        on-opened-changed="${(e) => store.dispatch(updateDrawerState(e.target.opened))}">
+      <nav class="drawer-list">
+        <a ?selected="${_page === 'schedule'}" href="/schedule-view">Schedule</a>
+        <a ?selected="${_page === 'people'}" href="/people-view">People</a>
+        <a ?selected="${_page === 'projects'}" href="/projects-view">Projects</a>
+      </nav>
+    </app-drawer>
+
+    <!-- Main content -->
+    <main class=${`main-content ${hidden}`}>
+      <schedule-view class="page schedule-view" ?active="${_page === 'schedule'}" id='scheduleView' on-notify='notify'></schedule-view>
+      <people-view class="page" ?active="${_page === 'people'}" id='peopleView' on-notify='notify'></people-view>
+      <projects-view class="page" ?active="${_page === 'projects'}" id='projectsView' on-notify='notify'></projects-view>
+      <my-view404 class="page" ?active="${_page === 'view404'}"></my-view404>
+    </main>
+
+    <paper-toast id='toast'></paper-toast>
+    <footer class="footer">
+      <p>Red Bee Media</p>
+    </footer>
+    `;
+  }
+
+  notify(level, message) {
+    const toast = this.shadowRoot.getElementById('toast');
+    toast.cancel();
+    toast.className = `notification-${level}`;
+    toast.text = message;
+    toast.duration = 3000;
+    // this.$.toast.positionTarget = this.$.appLayer;
+    toast.open();
+  }
+
+  loggedChanged(e) {
+    this.logged = e.detail.logged;
+  }
+
+  static get styles() {
+    return [
+      css`
       :host {
         --app-drawer-width: 256px;
         display: block;
 
-        --app-primary-color: #4285f4;
+        --app-primary-color: #ec407a;
         --app-secondary-color: #323232;
         --app-dark-text-color: var(--app-secondary-color);
         --app-light-text-color: #ffffff;
@@ -98,6 +201,7 @@ class DavesApp extends connect(store)(LitElement) {
 
       .toolbar-top {
         background-color: var(--app-header-background-color);
+        padding-top: 10px;
       }
 
       [main-title] {
@@ -110,6 +214,10 @@ class DavesApp extends connect(store)(LitElement) {
         padding-right: 44px;
       }
 
+      .menu-logo {
+        vertical-align: bottom;
+      }
+
       .toolbar-list {
         display: none;
         background-color: white;
@@ -120,7 +228,7 @@ class DavesApp extends connect(store)(LitElement) {
         color: var(--app-header-text-color);
         text-decoration: none;
         line-height: 30px;
-        padding: 4px 24px;
+        padding: 10px 24px;
       }
 
       .toolbar-list > a[selected] {
@@ -173,11 +281,15 @@ class DavesApp extends connect(store)(LitElement) {
         display: none;
       }
 
+      .schedule-view {
+        height: calc(100vh - 100px);
+      }
+
       .page[active] {
         display: block;
       }
 
-      footer {
+      .footer {
         padding: 24px;
         background: var(--app-drawer-background-color);
         color: var(--app-drawer-text-color);
@@ -228,8 +340,8 @@ class DavesApp extends connect(store)(LitElement) {
         }
 
         .main-content {
-          padding-top: 107px;
-          min-height: 589px;
+          padding-top: 128px;
+          /* min-height: 589px; */
         }
 
         /* The drawer button isn't shown in the wide layout, so we don't
@@ -241,134 +353,32 @@ class DavesApp extends connect(store)(LitElement) {
 
       @media (min-width: 750px) {
         .main-content {
-          padding-top: 107px;
-          min-height: 850px;
+          padding-top: 128px;
+          /* min-height: 850px; */
         }
       }
 
       @media (min-width: 1600px) {
         .main-content {
-          padding-top: 107px;
-          min-height: 623px;
+          padding-top: 128px;
+          /* min-height: 623px; */
         }
       }
 
       @media (min-width: 1920px) {
         .main-content {
-          padding-top: 107px;
-          min-height: 763px;
+          padding-top: 128px;
+          /* min-height: 763px; */
         }
       }
-    </style>
-    <login-dialog on-logged-change='${(e) => { this._loggedChanged(e) }}'></login-dialog>
 
-    <!-- Header -->
-    <app-header condenses reveals effects="waterfall">
-      <app-toolbar class="toolbar-top">
-        <button class="menu-btn" title="Menu" on-click="${_ => store.dispatch(updateDrawerState(true))}">${menuIcon}</button>
-        <div main-title>${appTitle}</div>
-      </app-toolbar>
-
-      <!-- This gets hidden on a small screen-->
-      <nav class="toolbar-list">
-        <a selected?="${_page === 'schedule-view'}" href="/schedule-view">Schedule</a>
-        <a selected?="${_page === 'people-view'}" href="/people-view">People</a>
-        <a selected?="${_page === 'projects-view'}" href="/projects-view">Projects</a>
-      </nav>
-    </app-header>
-
-    <!-- Drawer content -->
-    <app-drawer opened="${_drawerOpened}"
-        on-opened-changed="${e => store.dispatch(updateDrawerState(e.target.opened))}">
-      <nav class="drawer-list">
-        <a selected?="${_page === 'schedule-view'}" href="/schedule-view">Schedule</a>
-        <a selected?="${_page === 'people-view'}" href="/people-view">People</a>
-        <a selected?="${_page === 'projects-view'}" href="/projects-view">Projects</a>
-      </nav>
-    </app-drawer>
-
-    <!-- Main content -->
-    <main class$='main-content ${hidden}'>
-      <schedule-view class="page" active?="${_page === 'schedule-view'}" id='scheduleView' on-notify='notify'></schedule-view>
-      <people-view class="page" active?="${_page === 'people-view'}" id='peopleView' on-notify='notify'></people-view>
-      <projects-view class="page" active?="${_page === 'projects-view'}" id='projectsView' on-notify='notify'></projects-view>
-      <my-view404 class="page" active?="${_page === 'view404'}"></my-view404>
-    </main>
-
-    <paper-toast id='toast'></paper-toast>
-    <footer>
-      <p>Red Bee Media</p>
-    </footer>
-    `;
-  }
-
-  static get properties() {
-    return {
-      appTitle: String,
-      _page: String,
-      _drawerOpened: Boolean,
-      _snackbarOpened: Boolean,
-      _offline: Boolean,
-      notification: Object,
-      logged: Boolean
-    }
-  }
-
-  constructor() {
-    super();
-    // To force all event listeners for gestures to be passive.
-    // See https://www.polymer-project.org/2.0/docs/devguide/gesture-events#use-passive-gesture-listeners
-    setPassiveTouchGestures(true);
-    this.notification = {
-      level: '',
-      message: '',
-      duration: 3000
-    }
-    this.logged = true;
-  }
-
-  _firstRendered() {
-    installRouter((location) => store.dispatch(navigate(window.decodeURIComponent(location.pathname))));
-    installOfflineWatcher((offline) => store.dispatch(updateOffline(offline)));
-    installMediaQueryWatcher(`(min-width: 460px)`,
-        (matches) => store.dispatch(updateLayout(matches)));
-  }
-
-  _didRender(properties, changeList) {
-    if ('_page' in changeList) {
-      const pageTitle = properties.appTitle + ' - ' + changeList._page;
-      updateMetadata({
-          title: pageTitle,
-          description: pageTitle
-          // This object also takes an image property, that points to an img src.
-      });
-    }
-  }
-
-  _stateChanged(state) {
-    this._page = state.app.page;
-    this._offline = state.app.offline;
-    this._snackbarOpened = state.app.snackbarOpened;
-    this._drawerOpened = state.app.drawerOpened;
-    if (this.notification != state.notificationReducer.notification && Object.keys(state.notificationReducer.notification).length !== 0 && state.notificationReducer.notification.constructor === Object) {
-      this.notification = state.notificationReducer.notification;
-      this.notify(state.notificationReducer.notification.level, state.notificationReducer.notification.message);
-    }
-  }
-
-  notify(level, message) {
-    var toast = this.shadowRoot.getElementById('toast');
-    toast.cancel();
-    toast.className = 'notification-' + level;
-    toast.text = message;
-    toast.duration = 3000;
-    // this.$.toast.positionTarget = this.$.appLayer;
-    toast.open();
-  }
-
-  _loggedChanged(e) {
-    this.logged = e.detail.logged;
-
+      @media (max-width: 600px) {
+        .footer {
+          padding: 44px 24px 4px 24px;
+        }
+      }
+      `,
+    ];
   }
 }
 

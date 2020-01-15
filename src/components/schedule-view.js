@@ -1,139 +1,493 @@
-import { html } from '@polymer/lit-element';
-import {repeat} from "lit-html/lib/repeat"
-import { PageViewElement } from './page-view-element.js';
-import { connect } from 'pwa-helpers/connect-mixin.js';
-
-import '@polymer/google-chart/google-chart.js'
-import '@polymer/iron-icon/iron-icon.js';
-import '@polymer/iron-icons/iron-icons.js';
-import '@polymer/iron-icons/social-icons.js';
-import '@polymer/paper-button/paper-button.js';
-import '@polymer/paper-card/paper-card.js';
-import '@polymer/paper-dialog/paper-dialog.js';
-import '@polymer/paper-dropdown-menu/paper-dropdown-menu.js';
-import '@polymer/paper-fab/paper-fab.js';
-import '@polymer/paper-icon-button/paper-icon-button.js';
-import '@polymer/paper-item/paper-icon-item.js';
-import '@polymer/paper-item/paper-item.js';
-import '@polymer/paper-item/paper-item-body.js';
-import '@polymer/paper-listbox/paper-listbox.js';
-import '@polymer/paper-spinner/paper-spinner.js';
-import '@polymer/paper-tooltip/paper-tooltip.js';
-import '@vaadin/vaadin-date-picker/vaadin-date-picker.js';
-
-import('./task-dialog.js');
-
-// This element is connected to the Redux store.
-import { store } from '../store.js';
-
-// These are the actions needed by this element.
-import { getPeople } from '../actions/people.js';
-import { getProjects } from '../actions/projects.js';
-import { getTasks, setFilter, addTask, updateTask, deleteTask } from '../actions/tasks.js';
-import { setNotification } from '../actions/notification.js';
-
-/* Load shared styles. All view elements use these styles */
-import { SharedStyles } from './shared-styles.js';
+import { html, css } from 'lit-element';
+import { connect } from 'pwa-helpers/connect-mixin';
+import '@google-web-components/google-chart/google-chart';
+import '@polymer/iron-icon/iron-icon';
+import '@polymer/iron-icons/iron-icons';
+import '@polymer/iron-icons/social-icons';
+import '@polymer/iron-collapse/iron-collapse';
+import '@polymer/paper-button/paper-button';
+import '@polymer/paper-card/paper-card';
+import '@polymer/paper-dialog/paper-dialog';
+import '@polymer/paper-dropdown-menu/paper-dropdown-menu';
+import '@polymer/paper-fab/paper-fab';
+import '@polymer/paper-item/paper-icon-item';
+import '@polymer/paper-item/paper-item';
+import '@polymer/paper-item/paper-item-body';
+import '@polymer/paper-listbox/paper-listbox';
+import '@polymer/paper-spinner/paper-spinner';
+import '@polymer/paper-tooltip/paper-tooltip';
+import '@vaadin/vaadin-date-picker/vaadin-date-picker';
+import '@polymer/app-layout/app-drawer-layout/app-drawer-layout';
+import '@polymer/app-layout/app-drawer/app-drawer';
+import 'save-svg-as-png';
+import PageViewElement from './page-view-element';
+import './task-dialog';
+import './chart-controls';
+import { store } from '../store';
+import { getPeople } from '../actions/people';
+import { getProjects } from '../actions/projects';
+import {
+  getTasks,
+  setFilter,
+  addTask,
+  updateTask,
+  deleteTask,
+} from '../actions/tasks';
+import { setNotification } from '../actions/notification';
+import { SharedStyles } from './shared-styles';
 
 /* Extend the base PolymerElement class */
 class Schedule extends connect(store)(PageViewElement) {
-  _render(props) {
+  static get properties() {
+    return {
+      options: Object,
+      dialogTitle: String,
+      data: Object,
+      people: Array,
+      projects: Array,
+      tasks: Array,
+      taskToUpdate: Object,
+      lastAddedTask: Object,
+      lastUpdatedTask: Object,
+      lastDeletedTask: Object,
+      filter: Object,
+      rowNumber: Number,
+    };
+  }
 
-    var person = this._computePerson(props.people, props.taskToUpdate);
-    var project = this._computeProject(props.projects, props.taskToUpdate);
-    var from = this._computeFrom(props.taskToUpdate);
-    var to = this._computeTo(props.taskToUpdate);
+  constructor() {
+    super();
+    this.options = {
+      tooltip: {
+        isHtml: true,
+        trigger: 'hover',
+      },
+      hAxis: {},
+    };
+    this.data = null;
+    this.filter = {
+      minDate: moment().toDate(),
+      maxDate: moment().toDate(),
+    };
+    this.dialogTitle = '';
+    this.people = [];
+    this.projects = [];
+    this.tasks = [];
+    this.taskToUpdate = {
+      id: '',
+      name: '',
+      personId: '',
+      projectId: '',
+      from: '',
+      to: '',
+    };
+    this.rowNumber = 0;
+  }
 
-    let graphSection = html``,
-        previousButton = html``,
-        nextButton = html``,
-        cardContent = html``;
+  firstUpdated() {
+    store.dispatch(getPeople());
+    store.dispatch(getProjects());
+    this._setPeriod();
+  }
 
-      var loading = props.data == '';
-      previousButton = html`
-          <paper-icon-button slot="suffix" icon='chevron-left' on-click='${(e) => { this._decreaseFilter() }}'></paper-icon-button>
-        `;
-        nextButton = html`
-          <paper-icon-button slot="suffix" icon='chevron-right' on-click='${(e) => { this._increaseFilter() }}'></paper-icon-button>
-        `;
+  stateChanged(state) {
+    const {
+      tasksReducer: {
+        filter: reducerFilter,
+        lastAddedTask: reducerLastAddedTask,
+        lastUpdatedTask: reducerLastUpdatedTask,
+        lastDeletedTask: reducerLastDeletedTask,
+      },
+      peopleReducer: { people: reducerPeople },
+      projectsReducer: { projects: reducerProjects },
+      tasksReducer: { tasks: reducerTasks },
+    } = state;
 
-        var hidden = loading ? "visible" : "hidden"
-
-        graphSection = html`
-        <paper-card class="">
-          <div class="card-content">
-          <h1>
-            ${previousButton}
-            ${nextButton}
-            ${moment(props.filter.minDate).format('MMMM YYYY').toUpperCase()} - ${moment(props.filter.maxDate).format('MMMM YYYY').toUpperCase()}
-          </h1>
-            <center><paper-spinner class$="${hidden}" active='${loading}'></paper-spinner></center>
-            <google-chart id='timelineChart' type='timeline' data='${props.data}' on-google-chart-select='${(e) => { this._onChartSelect(e) }}' options='${props.options}' on-google-chart-ready='${(e) => { this._chartIsReady(e) }}'></google-chart>
-          </div>
-        </paper-card>
-        `;
-
-    if (this.taskToUpdate.id != '') {
-      cardContent = html`
-      <div role="listbox">
-        <paper-item>
-          <paper-item-body two-line>
-            <div><b>${props.taskToUpdate.name.toUpperCase()}</b></div>
-            <div secondary></div>
-          </paper-item-body>
-        </paper-item>
-        <paper-icon-item>
-          <iron-icon icon="social:person" slot="item-icon">
-          </iron-icon>
-          <paper-item-body two-line>
-            <div>${person.name}</div>
-            <div secondary>${person.title}</div>
-          </paper-item-body>
-        </paper-icon-item>
-        <paper-icon-item>
-            <iron-icon icon="icons:work" slot="item-icon">
-            </iron-icon>
-          <paper-item-body two-line>
-            <div>${project.name}</div>
-            <div secondary></div>
-          </paper-item-body>
-        </paper-icon-item>
-        <paper-icon-item>
-          <iron-icon icon="icons:date-range" slot="item-icon">
-          </iron-icon>
-          <paper-item-body two-line>
-            <div>From</div>
-            <div secondary>${from}</div>
-          </paper-item-body>
-          <paper-item-body two-line>
-            <div>To</div>
-            <div secondary>${to}</div>
-          </paper-item-body>
-        </paper-icon-item>
-      </div>
-      `;
-    } else {
-      cardContent = html`
-      <paper-item>
-        <paper-item-body two-line>
-          <div><b>TASK DETAILS</b></div>
-          <div secondary></div>
-        </paper-item-body>
-      </paper-item>
-      <div class="no-task"><i>Please, Select a Task to see details...</i></div>`;
+    if (this.filter !== reducerFilter) {
+      this.filter = reducerFilter;
+      this.options.hAxis.minValue = reducerFilter.minDate;
+      this.options.hAxis.maxValue = reducerFilter.maxDate;
+      if (moment(reducerFilter.minDate).valueOf() !== moment(reducerFilter.maxDate).valueOf()) {
+        store.dispatch(getTasks());
+      }
     }
 
+    if (this.people !== reducerPeople && reducerPeople.length) {
+      this.people = reducerPeople;
+      this._dataChanged(reducerPeople, this.projects, this.tasks);
+    }
+
+    if (this.projects !== reducerProjects && reducerProjects.length) {
+      this.projects = reducerProjects;
+      this._dataChanged(this.people, reducerProjects, this.tasks);
+    }
+
+    if (this.tasks !== reducerTasks && reducerTasks.length) {
+      this.tasks = reducerTasks;
+      this._dataChanged(this.people, this.projects, reducerTasks);
+    }
+
+    if (this.lastAddedTask !== reducerLastAddedTask) {
+      this.lastAddedTask = reducerLastAddedTask;
+      if (Object.keys(this.lastAddedTask).length) {
+        this._closeTaskDialog();
+      }
+    }
+
+    if (this.lastUpdatedTask !== reducerLastUpdatedTask) {
+      this.lastUpdatedTask = reducerLastUpdatedTask;
+      if (Object.keys(this.lastUpdatedTask).length) {
+        this._closeTaskDialog();
+        this._initTaskToUpdate();
+      }
+    }
+
+    if (this.lastDeletedTask !== reducerLastDeletedTask) {
+      this.lastDeletedTask = reducerLastDeletedTask;
+      if (Object.keys(this.lastDeletedTask).length) {
+        this._closeDeleteDialog();
+        this._closeTaskDialog();
+        this._initTaskToUpdate();
+      }
+    }
+  }
+
+  _setPeriod() {
+    const { screen: { width } } = window;
+    const now = moment().set({
+      hour: 0, minute: 0, second: 0, millisecond: 0,
+    });
+    let period = 4;
+    if (width < 1000) {
+      period = 1;
+    } else if (width < 1400) {
+      period = 2;
+    } else if (width < 1800) {
+      period = 3;
+    }
+    store.dispatch(setFilter({
+      minDate: now.toDate(),
+      maxDate: now.add(period, 'weeks').toDate(),
+    }));
+  }
+
+  _computePerson(people, task) {
+    return task.personId ? people.find((p) => (task.personId === p.id)) : {};
+  }
+
+  _computeProject(projects, task) {
+    return task.projectId ? projects.find((p) => (task.projectId === p.id)) : {};
+  }
+
+  _computeFrom(task) {
+    return task.from ? moment(task.from).format('YYYY-MM-DD') : '';
+  }
+
+  _computeTo(task) {
+    return task.to ? moment(task.to).format('YYYY-MM-DD') : '';
+  }
+
+  _increaseFilter() {
+    const { filter } = this;
+    const minDate = moment(filter.minDate).clone().add(1, 'week').toDate();
+    const maxDate = moment(filter.maxDate).clone().add(1, 'week').toDate();
+    store.dispatch(setFilter({
+      minDate,
+      maxDate,
+    }));
+  }
+
+  _decreaseFilter() {
+    const { filter } = this;
+    const minDate = moment(filter.minDate).clone().subtract(1, 'week').toDate();
+    const maxDate = moment(filter.maxDate).clone().subtract(1, 'week').toDate();
+    store.dispatch(setFilter({
+      minDate,
+      maxDate,
+    }));
+  }
+
+  _dataChanged(people, projects, tasks) {
+    if (people.length && projects.length && tasks.length) {
+      google.charts.load('current', { packages: ['timeline'] });
+      google.charts.setOnLoadCallback(() => {
+        const dataTable = new google.visualization.DataTable();
+        dataTable.addColumn({ type: 'string', id: 'Person' });
+        dataTable.addColumn({ type: 'string', id: 'Project' });
+        dataTable.addColumn({ type: 'string', role: 'tooltip' });
+        dataTable.addColumn({ type: 'date', id: 'Start' });
+        dataTable.addColumn({ type: 'date', id: 'End' });
+        const rows = this._getTasksByPerson(people, projects, tasks);
+        rows.forEach((row) => {
+          dataTable.addRow(row);
+        });
+        this.data = dataTable;
+      });
+    }
+  }
+
+  _getTasksByPerson(people, projects, tasks) {
+    const { filter } = this;
+    const filteredPeople = [];
+
+    const array = tasks.reduce((total, task) => {
+      const person = people.find((p) => (task.personId === p.id));
+      filteredPeople.push(person);
+      const project = projects.find((p) => (task.projectId === p.id));
+      if (person && project) {
+        const chartStart = task.from < filter.minDate ? filter.minDate : task.from;
+        const chartEnd = task.to > filter.maxDate ? filter.maxDate : task.to;
+        total.push([
+          person.name,
+          project.name,
+          JSON.stringify({ person, project, task }),
+          chartStart,
+          chartEnd,
+        ]);
+      }
+      return total;
+    }, []);
+
+    const missingPeople = people.filter((p) => (
+      !filteredPeople.some((other) => (p.id === other.id))
+    ));
+
+    const emptyTasks = missingPeople.reduce((total, p) => {
+      const emptyTask = [p.name, null, null, filter.minDate, filter.minDate];
+      total.push(emptyTask);
+      return total;
+    }, []);
+
+    const fullArray = [
+      ...array,
+      ...emptyTasks,
+    ];
+
+    return fullArray.sort((a, b) => {
+      if (a[0].toLowerCase() === b[0].toLowerCase()) {
+        return 0;
+      }
+      return (a[0].toLowerCase() < b[0].toLowerCase()) ? -1 : 1;
+    });
+  }
+
+  _chartIsReady(e) {
+    this.chart = e.detail.chart;
+    const el = e.detail.chart.container.getElementsByTagName('rect'); // get all the descendant rect element inside the container
+    let width = 100000000; // set a large initial value to width
+    let elToRem = []; // element would be added to this array for removal
+    for (let i = 0; i < el.length; i++) { // looping over all the rect element of container
+      const cwidth = parseInt(el[i].getAttribute('width')); // getting the width of ith element
+      // if current element width is less than previous width
+      // then this is min. width and ith element should be removed
+      if (cwidth < width) {
+        elToRem = [el[i]];
+        width = cwidth; // setting the width with min width
+      // if current element width is equal to previous width
+      // then more that one element would be removed
+      } else if (cwidth === width) {
+        elToRem.push(el[i]);
+      }
+    }
+    for (let i = 0; i < elToRem.length; i++) { // now iterate JUST the elements to remove
+      elToRem[i].setAttribute('fill', 'none'); // make invisible all the rect element which has minimum width
+    }
+    this._moveXBarToTop();
+  }
+
+  _moveXBarToTop() {
+    const { chart: { container: chartContainer } } = this;
+    let g = chartContainer.getElementsByTagName('svg')[0].getElementsByTagName('g')[0];
+    chartContainer.getElementsByTagName('svg')[0].parentNode.style.top = '40px';
+    chartContainer.getElementsByTagName('svg')[0].style.overflow = 'visible';
+    const height = Number(g.getElementsByTagName('text')[0].getAttribute('y')) + 25;
+    g.setAttribute('transform', `translate(0, -${height})`);
+    g = null;
+  }
+
+  _initTaskToUpdate() {
+    const task = {
+      id: '',
+      name: '',
+      personId: '',
+      projectId: '',
+      from: '',
+      to: '',
+    };
+    this.taskToUpdate = task;
+  }
+
+  _addTask() {
+    this._initTaskToUpdate();
+    this.dialogTitle = 'create task';
+    this._openTaskDialog();
+  }
+
+  _editClicked() {
+    if (this.taskToUpdate.id !== '') {
+      this.dialogTitle = 'edit task';
+      this._openTaskDialog();
+    } else {
+      const level = 'warning';
+      const message = 'Please, select a task to update.';
+      // this.dispatchEvent(new CustomEvent('notify', {detail: {level: level, message: message}}));
+      store.dispatch(setNotification(level, message));
+    }
+  }
+
+  _deleteClicked() {
+    if (this.taskToUpdate.id !== '') {
+      this._openDeleteDialog();
+    } else {
+      const level = 'warning';
+      const message = 'Please, select a task to delete.';
+      // this.dispatchEvent(new CustomEvent('notify', {detail: {level: level, message: message}}));
+      store.dispatch(setNotification(level, message));
+    }
+  }
+
+  _confirmDelete() {
+    const { taskToUpdate: { id } } = this;
+    store.dispatch(deleteTask(id));
+  }
+
+  _downloadChart() {
+    const { chart: { container: chartContainer } } = this;
+    const filename = `${moment(this.filter.minDate).format('YYYYMMDD')}-${moment(this.filter.maxDate).format('YYYYMMDD')}`;
+    const svg = chartContainer.getElementsByTagName('svg')[1].cloneNode(true);
+    saveSvgAsPng(svg, `${filename}.png`);
+  }
+
+  outerHTML(el) {
+    const outer = document.createElement('div');
+    outer.appendChild(el.cloneNode(true));
+    return outer.innerHTML;
+  }
+
+  _onChartSelect() {
+    setTimeout(() => {
+      const chart = this.shadowRoot.getElementById('timelineChart');
+      if (chart.selection && chart.selection[0].row) {
+        const data = JSON.parse(this.data.getValue(chart.selection[0].row, 2));
+        if (data !== null) {
+          this.taskToUpdate = { ...data.task };
+        }
+        this._editClicked();
+      }
+    }, 100);
+  }
+
+  _onSaveTask(e) {
+    const { detail: { task } } = e;
+    if (task.id) {
+      store.dispatch(
+        updateTask(task.id, task.name, task.projectId, task.personId, task.from, task.to),
+      );
+    } else {
+      store.dispatch(addTask(task.name, task.projectId, task.personId, task.from, task.to));
+    }
+  }
+
+  _openTaskDialog() {
+    this.shadowRoot.getElementById('taskDialog').open();
+  }
+
+  _openDeleteDialog() {
+    this.shadowRoot.getElementById('deleteDialog').open();
+  }
+
+  _closeTaskDialog() {
+    this.shadowRoot.getElementById('taskDialog').close();
+  }
+
+  _closeDeleteDialog() {
+    this.shadowRoot.getElementById('deleteDialog').close();
+  }
+
+  refresh() {
+    this._getPeople();
+    this._getProjects();
+    this._initTaskToUpdate();
+  }
+
+  _notify(e) {
+    store.dispatch(setNotification(e.detail.level, e.detail.message));
+  }
+
+  _onCloseDialog() {
+    this.shadowRoot.getElementById('timelineChart').selection = [];
+  }
+
+  render() {
+    const {
+      people,
+      projects,
+      taskToUpdate,
+      data,
+      filter,
+      options,
+      dialogTitle,
+    } = this;
+
+    let graphSection = html``;
+    const empty = data === null;
+
+    graphSection = html`
+      <div class="schedule-graph-card__content">
+        ${empty ? html`<center><paper-spinner class="schedule-graph-card__content__spinner" .active=${empty}></paper-spinner></center>` : ''}
+        ${!empty ? html`<google-chart class="schedule-graph-card__content__chart" id='timelineChart' type='timeline' .data='${data}' @google-chart-select='${(e) => { this._onChartSelect(e); }}' .options='${options}' @google-chart-ready='${(e) => { this._chartIsReady(e); }}'></google-chart>` : ''}
+      </div>
+    `;
+
     return html`
-    ${SharedStyles}
-      <style>
-        :host {
+      <div id='container' class="page-container">
+        <div class="chart-container">
+          ${graphSection}
+        </div>
+        <chart-controls
+          minDate="${moment(filter.minDate).format('MMM YYYY')}"
+          maxDate="${moment(filter.maxDate).format('MMM YYYY')}"
+          @add-task="${this._addTask}"
+          @download-chart="${this._downloadChart}"
+          @increase="${this._increaseFilter}"
+          @decrease="${this._decreaseFilter}"
+        ></chart-controls>
+
+        <task-dialog
+          id='taskDialog'
+          dialogTitle='${dialogTitle}'
+          dialogId='taskDialog'
+          .people='${people}'
+          .projects='${projects}'
+          .task='${taskToUpdate}'
+          @save-task='${(e) => { this._onSaveTask(e); }}'
+          @delete-task='${this._deleteClicked}'
+          @notify='${(e) => { this._notify(e); }}'
+          @close-dialog='${(e) => { this._onCloseDialog(e); }}'
+        ></task-dialog>
+
+        <paper-dialog id='deleteDialog'>
+          <h2 class='dialog-title'>DELETE TASK</h2>
+          <p>Delete ${taskToUpdate.name.toUpperCase()}?</p>
+          <div class="buttons">
+            <paper-button dialog-dismiss>Cancel</paper-button>
+            <paper-button autofocus @click='${this._confirmDelete}'>Delete</paper-button>
+          </div>
+        </paper-dialog>
+    `;
+  }
+
+  static get styles() {
+    return [
+      SharedStyles,
+      css`
+      :host {
           display: block;
-          height: 100%;
+          height: stretch;
         }
 
-        #container {
-          height: 100%;
-          padding: 0 0 30px 30px;
+        .page-container {
+          height: calc(100% - 32px);
         }
 
         paper-dialog {
@@ -141,12 +495,11 @@ class Schedule extends connect(store)(PageViewElement) {
           border-radius: 5px;
         }
 
-        .details-container {
-          margin: 30px 30px 0 0;
+        app-drawer {
+
         }
 
         paper-card {
-          z-index: 15;
           width: 100%;
           /* height: 100%; */
           border-radius: 5px;
@@ -158,6 +511,31 @@ class Schedule extends connect(store)(PageViewElement) {
             font-size: 20px;
           };
           color: var(--app-secondary-color);
+        }
+
+        .schedule-graph-card {
+          height: 100%;
+        }
+
+        .schedule-graph-card__content {
+          height: 100%;
+          padding: 16px;
+          /* display: grid;
+          grid-template-rows: auto 1fr; */
+        }
+
+        .schedule-graph-card__content__spinner {
+          position: relative;
+          top: 50%;
+          transform: translateY(-50%);
+        }
+
+        .schedule-graph-card__content__chart {
+          height: 100%;
+        }
+
+        #chartdiv {
+          height: 100%;
         }
 
         paper-card.task-details {
@@ -197,29 +575,15 @@ class Schedule extends connect(store)(PageViewElement) {
 
         #addButton {
           position: fixed;
-          bottom: 4.5rem;
+          bottom: 24px;
           right: 85px;
         }
-
-        /* #editButton {
-          position: fixed;
-          bottom: 2rem;
-          right: 150px;
-        } */
-
-        /* #deleteButton {
-          position: fixed;
-          bottom: 2rem;
-          right: 85px;
-        } */
 
         #exportButton {
           position: fixed;
-          bottom: 4.5rem;
+          bottom: 24px;
           right: 20px;
         }
-
-
 
         h1 {
           width: 100%;
@@ -229,13 +593,13 @@ class Schedule extends connect(store)(PageViewElement) {
         }
 
         .chart-container {
-          min-height: 200px;
           height: 100%;
-          margin: 30px 30px 0 0;
+          display: inline;
+          /* grid-row: 1; */
         }
 
         paper-spinner {
-          /* margin: auto; */
+          /* auto; */
         }
 
         .date-label {
@@ -262,14 +626,6 @@ class Schedule extends connect(store)(PageViewElement) {
           padding: 24px 24px 0 24px;
           font-family: "font-roboto", sans-serif;
         }
-
-       .flex9child {
-         @apply(--layout-flex-9);
-       }
-
-       .flex3child {
-         @apply(--layout-flex-3);
-       }
 
        .card-actions {
          text-align: right;
@@ -305,449 +661,32 @@ class Schedule extends connect(store)(PageViewElement) {
        }
 
        paper-spinner.visible {
-         margin: 40px;
+         40px;
        }
 
        #timelineChart {
          /* margin-bottom: 30px; */
        }
 
-       @media (min-width: 1280px) {
-         .flex {
-           @apply --layout-horizontal;
-         }
+       @media (min-width: 400px) {
        }
 
+       @media (min-width: 600px) {
+       }
 
-      </style>
-      <div id='container' class="flex">
-        <div class="chart-container flex9child">
-          ${graphSection}
-        </div>
-        <div class="details-container flex3child">
-        <paper-card class="task-details">
-          <div class="card-content">
-            ${cardContent}
-          </div>
-          <div class="card-actions">
-            <paper-button on-click='${(e) => { this._editClicked() }}'>Edit Task</paper-button>
-            <paper-button on-click='${(e) => { this._deleteClicked() }}'>Delete Task</paper-button>
-          </div>
-        </paper-card>
-      </div>
+       @media (min-width: 1000px) {
+       }
 
-      </div>
-        <paper-fab id='addButton' icon='add' class='blue' on-click='${(e) => { this._addTask() }}'></paper-fab>
-        <paper-fab id='exportButton' icon='file-download' class='teal' on-click='${(e) => { this._exportTimeline() }}'></paper-fab>
-        <paper-tooltip for="addButton" position="top" animation-delay="0">Add Task</paper-tooltip>
-        <paper-tooltip for="exportButton" position="top" animation-delay="0">Export Chart</paper-tooltip>
-        <task-dialog id='taskDialog' dialogTitle='${props.dialogTitle}' dialogId='taskDialog' people='${props.people}' projects='${props.projects}' task='${props.taskToUpdate}' on-save-task='${(e) => { this._onSaveTask(e) }}' on-notify='${(e) => { this._notify(e) }}' on-close-dialog='${(e) => { this._onCloseDialog(e) }}'></task-dialog>
-        <paper-dialog id='deleteDialog' with-backdrop>
-          <h2 class='dialog-title'>DELETE TASK</h2>
-          <p>Delete ${props.taskToUpdate.name.toUpperCase()}?</p>
-          <div class="buttons">
-            <paper-button dialog-dismiss>Cancel</paper-button>
-            <paper-button autofocus on-click='${(e) => { store.dispatch(deleteTask(props.taskToUpdate.id)) }}'>Delete</paper-button>
-          </div>
-        </paper-dialog>
+       @media (min-width: 1200px) {
+       }
 
-    `;
-  }
-  // <paper-fab id='deleteButton' icon='delete' class='red' on-click='${(e) => { this._deleteClicked() }}'></paper-fab>
-// <paper-fab id='editButton' icon='create' class='amber' on-click='${(e) => { this._editClicked() }}'></paper-fab>
-  static get properties() { return {
-    options: Object,
-    dialogTitle: String,
-    data: Array,
-    people: Array,
-    projects: Array,
-    tasks: Array,
-    taskToUpdate: Object,
-    lastAddedTask: Object,
-    lastUpdatedTask: Object,
-    lastDeletedTask: Object,
-    filter: Object,
-    rowNumber: Number
-  }}
+       @media (min-width: 1500px) {
+       }
 
-  constructor() {
-    super();
-    var me = this;
-    this.options = {
-      tooltip: { trigger: 'hover' },
-      hAxis: {}
-    };
-    this.data = '';
-    this.filter = {minDate: moment().toDate(), maxDate: moment().toDate()};
-    this.dialogTitle = "",
-    this.people = [];
-    this.projects = [];
-    this.tasks = [];
-    this.taskToUpdate = {
-      id: '',
-      name: '',
-      personId: '',
-      projectId: '',
-      from: '',
-      to: ''
-    };
-    this.rowNumber = 0;
-  }
-
-  // This is called every time something is updated in the store.
-  _stateChanged(state) {
-    if (this.filter != state.tasksReducer.filter) {
-      this.filter = state.tasksReducer.filter;
-      this.options.hAxis.minValue = state.tasksReducer.filter.minDate;
-      this.options.hAxis.maxValue = state.tasksReducer.filter.maxDate;
-      // console.log(this.options.hAxis.minValue)
-      if (moment(state.tasksReducer.filter.minDate).valueOf() != moment(state.tasksReducer.filter.maxDate).valueOf()) {
-          store.dispatch(getTasks());
-      }
-    }
-
-    if (this.people != state.peopleReducer.people || this.projects != state.projectsReducer.projects || this.tasks != state.tasksReducer.tasks) {
-      this.people = state.peopleReducer.people;
-      this.projects = state.projectsReducer.projects;
-      this.tasks = state.tasksReducer.tasks;
-      this._dataChanged(state.peopleReducer.people, state.projectsReducer.projects, state.tasksReducer.tasks);
-    }
-    if (this.lastAddedTask != state.tasksReducer.lastAddedTask) {
-      this.lastAddedTask = state.tasksReducer.lastAddedTask;
-        if (Object.keys(this.lastAddedTask).length > 0) {
-          this._closeTaskDialog();
-      }
-    }
-
-    if (this.lastUpdatedTask != state.tasksReducer.lastUpdatedTask) {
-      this.lastUpdatedTask = state.tasksReducer.lastUpdatedTask;
-        if (Object.keys(this.lastUpdatedTask).length > 0) {
-          this._closeTaskDialog();
-          this._initTaskToUpdate();
-      }
-    }
-
-    if (this.lastDeletedTask != state.tasksReducer.lastDeletedTask) {
-      this.lastDeletedTask = state.tasksReducer.lastDeletedTask;
-        if (Object.keys(this.lastDeletedTask).length > 0) {
-          this._closeDeleteDialog();
-          this._initTaskToUpdate();
-      }
-    }
-  }
-
-  _computePerson(people, task) {
-    var person = {};
-    if (task.personId != '') {
-      person = people.filter(function (person) {
-        return task.personId == person.id;
-      })[0];
-    }
-    return person;
-  }
-
-  _computeProject(projects, task) {
-    var project = {};
-    if (task.projectId != '') {
-      project = projects.filter(function (project) {
-        return task.projectId == project.id;
-      })[0];
-    }
-    return project;
-  }
-
-  _computeFrom(task) {
-    return task.from  != '' ? moment(task.from).format('YYYY-MM-DD') : '';
-  }
-
-  _computeTo(task) {
-    return task.to  != '' ? moment(task.to).format('YYYY-MM-DD') : '';
-  }
-
-  _increaseFilter() {
-    var minDate = moment(this.filter.minDate);
-    var maxDate = moment(this.filter.maxDate);
-    var min = minDate.clone().add(1, 'week');
-    var max = maxDate.clone().add(1, 'week');
-    store.dispatch(setFilter({
-      minDate: min.toDate(),
-      maxDate: max.toDate()
-    }));
-  }
-
-  _decreaseFilter() {
-    var minDate = moment(this.filter.minDate);
-    var maxDate = moment(this.filter.maxDate);
-    var min = minDate.clone().subtract(1, 'week');
-    var max = maxDate.clone().subtract(1, 'week');
-    store.dispatch(setFilter({
-      minDate: min.toDate(),
-      maxDate: max.toDate()
-    }));
-  }
-
-  _firstRendered() {
-    store.dispatch(getPeople());
-    store.dispatch(getProjects());
-    var now = moment().set({hour:0,minute:0,second:0,millisecond:0});
-    store.dispatch(setFilter({
-      minDate: now.toDate(),
-      maxDate: now.add(1, 'months').toDate()
-    }));
-  }
-
-  _dataChanged(people, projects, tasks) {
-    // console.log(people);
-    // console.log(projects);
-    // console.log(tasks);
-    var me = this;
-    google.charts.load('current', {'packages':['timeline']});
-    google.charts.setOnLoadCallback( function () {
-      var dataTable = new google.visualization.DataTable();
-      dataTable.addColumn({ type: 'string', id: 'Person' });
-      dataTable.addColumn({ type: 'string', id: 'Project' });
-      dataTable.addColumn({ type: 'string', role: 'tooltip'});
-      dataTable.addColumn({ type: 'date', id: 'Start' });
-      dataTable.addColumn({ type: 'date', id: 'End' });
-
-      var rows = me._getTasksByPerson(people, projects, tasks);
-
-      me.rowNumber = me._getRowNumber(rows);
-
-      rows.forEach(function (row) {
-        dataTable.addRow(row);
-      });
-
-      // me.data = dataTable;
-
-      // if (dataTable.og.length > 0)  {
-      //   me.data = dataTable;
-      setTimeout(function() {
-      //     var chart = me.shadowRoot.getElementById('timelineChart');
-      //     if (chart != null) {
-        me.data = dataTable;
-      //       chart.data = dataTable;
-      //     }
-      }, 100);
-      // }
-    });
-
-  }
-
-  _getTasksByPerson(people, projects, tasks) {
-    var array = [];
-    var me = this;
-    var filteredPerson = [];
-    var filteredPeople = [];
-    var filteredProjects = [];
-    var missingPeople = [];
-
-    // console.log(tasks);
-    tasks.forEach(function (task) {
-
-      filteredPerson = people.filter(function (person) {
-        return task.personId == person.id;
-      });
-
-      filteredPeople.push(filteredPerson[0]);
-
-      filteredProjects = projects.filter(function (project) {
-        return task.projectId == project.id;
-      });
-
-      if (people.length > 0 && projects.length > 0) {
-        var data = {
-          person: filteredPerson[0],
-          project: filteredProjects[0],
-          task: task
-        };
-        var chartStart = task.from < me.filter.minDate ? me.filter.minDate : task.from;
-        var chartEnd = task.to > me.filter.maxDate ? me.filter.maxDate : task.to;
-
-        array.push([filteredPerson[0].name, filteredProjects[0].name, JSON.stringify(data), chartStart, chartEnd]);
-      }
-    });
-
-    missingPeople = people.filter(function(item) {
-      return !filteredPeople.some(function(other) {
-        return item.id === other.id;
-      });
-    })
-
-    missingPeople.forEach(function (person) {
-      array.push([person.name, null, null, me.filter.minDate, me.filter.minDate]);
-    });
-
-    array = array.sort(function (a, b) {
-      if (a[0].toLowerCase() === b[0].toLowerCase()) {
-        return 0;
-      }
-      else {
-        return (a[0].toLowerCase() < b[0].toLowerCase()) ? -1 : 1;
-      }
-    });
-
-    return array;
-  }
-
-  _getRowNumber(rows) {
-    // clone array
-    var myArray = JSON.parse(JSON.stringify(rows));
-
-    // remove attributes not usefyul for filtering and stringify objects
-     myArray.forEach(function(item, index) {
-      delete item[2];
-      delete item[3];
-      delete item[4];
-      myArray[index] = JSON.stringify(item);
-    });
-
-    // remove duplicates
-    var filteredRows = myArray.filter(function(item, index) {
-      return myArray.indexOf(item) >= index;
-    });
-    return filteredRows.length;
-  }
-
-  _chartIsReady (e) {
-      this.chart = e.detail.chart;
-    var chart = this.shadowRoot.getElementById('timelineChart');
-    var numRows = this.rowNumber;
-
-      var expectedHeight = numRows * 42 + 50;
-
-      if (parseInt(chart.options.height, 10) != expectedHeight) {
-        // Update the chart options and redraw just it
-        // expectedHeight = expectedHeight > 600 ? 600 : expectedHeight;
-        chart.setAttribute("style","height:" + parseInt(expectedHeight) + 'px');
-        chart.options.height = expectedHeight;
-        chart.redraw();
-      }
-      var el= e.detail.chart.container.getElementsByTagName("rect");  //get all the descendant rect element inside the container
-      var width=100000000;                                //set a large initial value to width
-      var elToRem=[];                                     //element would be added to this array for removal
-      for(var i=0;i<el.length;i++){                           //looping over all the rect element of container
-          var cwidth=parseInt(el[i].getAttribute("width"));//getting the width of ith element
-          if(cwidth<width){                               //if current element width is less than previous width then this is min. width and ith element should be removed
-              elToRem=[el[i]];
-              width=cwidth;                               //setting the width with min width
-          }
-          else if(cwidth==width){                         //if current element width is equal to previous width then more that one element would be removed
-              elToRem.push(el[i]);
-          }
-      }
-      for(var i=0;i<elToRem.length;i++) { // now iterate JUST the elements to remove
-          elToRem[i].setAttribute("fill","none"); //make invisible all the rect element which has minimum width
-      }
-  }
-
-  _initTaskToUpdate() {
-    var task = {
-      id: '',
-      name: '',
-      personId: '',
-      projectId: '',
-      from: '',
-      to: ''
-    };
-    this.taskToUpdate = task;
-  }
-
-  _addTask(task) {
-    this._initTaskToUpdate();
-    this.dialogTitle = 'create task';
-    this._openTaskDialog();
-  }
-
-  _editClicked() {
-    if (this.taskToUpdate.id != '') {
-      this.dialogTitle = 'edit task';
-      this._openTaskDialog();
-    } else {
-      var level = 'warning';
-      var message = 'Please, select a task to update.';
-      // this.dispatchEvent(new CustomEvent('notify', {detail: {level: level, message: message}}));
-      store.dispatch(setNotification(level, message));
-    }
-  }
-
-  _deleteClicked() {
-    if (this.taskToUpdate.id != '') {
-      this._openDeleteDialog();
-    } else {
-      var level = 'warning';
-      var message = 'Please, select a task to delete.';
-      // this.dispatchEvent(new CustomEvent('notify', {detail: {level: level, message: message}}));
-      store.dispatch(setNotification(level, message));
-    }
-  }
-
-  _exportTimeline() {
-    var filename = moment(this.filter.minDate).format('YYYYMMDD') + '-' + moment(this.filter.maxDate).format('YYYYMMDD');
-    var svg = this.chart.container.getElementsByTagName('svg')[0].cloneNode(true);
-    saveSvgAsPng(svg, filename + ".png");
- }
-
- outerHTML(el) {
-  var outer = document.createElement('div');
-  outer.appendChild(el.cloneNode(true));
-  return outer.innerHTML;
-}
-
-  _onChartSelect(e) {
-    var me = this;
-    setTimeout(function() {
-      var chart = me.shadowRoot.getElementById('timelineChart');
-      if (chart.selection != undefined && chart.selection[0].row != null) {
-        var data = JSON.parse(me.data.getValue(chart.selection[0].row, 2));
-        if (data != null ) {
-          me.taskToUpdate = data.task;
-        }
-      }
-    }, 100);
-
-  }
-
-  _onSaveTask(e) {
-    var task = e.detail.task;
-    if (task.id != '') {
-      // this._updateTask(task);
-      store.dispatch(updateTask(task.id, task.name, task.projectId, task.personId, task.from, task.to))
-    } else {
-      // this._createTask(task);
-      store.dispatch(addTask(task.name, task.projectId, task.personId, task.from, task.to))
-    }
-  }
-
-  _openTaskDialog() {
-    this.shadowRoot.getElementById('taskDialog').open();
-  }
-
-  _openDeleteDialog() {
-    this.shadowRoot.getElementById('deleteDialog').open();
-  }
-
-  _closeTaskDialog() {
-    this.shadowRoot.getElementById('taskDialog').close();
-  }
-
-  _closeDeleteDialog() {
-    this.shadowRoot.getElementById('deleteDialog').close();
-  }
-
-  refresh() {
-    this._getPeople();
-    this._getProjects();
-    this._initTaskToUpdate();
-  }
-
-  _notify(e) {
-    store.dispatch(setNotification(e.detail.level, e.detail.message));
-    // this.dispatchEvent(new CustomEvent('notify', {detail: {level: e.detail.level, message: e.detail.message}}));
-  }
-
-  _onCloseDialog(e) {
-    this.shadowRoot.getElementById('timelineChart').selection = [];
+       @media (min-width: 1800px) {
+       }
+      }`,
+    ];
   }
 }
 

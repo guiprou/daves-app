@@ -3,10 +3,10 @@
   "shell": "src/components/daves-app.js",
   "sources": [
     "images/**/*",
-    "node_modules/parse/dist/*",
+    "node_modules/*",
     "node_modules/moment/min/*",
     "node_modules/web-animations-js/*",
-    "node_modules/save-svg-as-png/src/*",
+    "node_modules/save-svg-as-png/lib/*",
     "node_modules/jquery/dist/*"
   ],
   "extraDependencies": [

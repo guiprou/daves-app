@@ -1,167 +1,91 @@
-import { html } from '@polymer/lit-element';
-import {repeat} from "lit-html/lib/repeat"
-import { PageViewElement } from './page-view-element.js';
-import { connect } from 'pwa-helpers/connect-mixin.js';
-
-import '@polymer/iron-icons/iron-icons.js';
-import '@polymer/paper-fab/paper-fab.js';
-import '@polymer/paper-button/paper-button.js';
-import '@polymer/paper-input/paper-input.js';
-import '@polymer/paper-dialog/paper-dialog.js';
-import '@polymer/paper-tooltip/paper-tooltip.js';
-
-import('./project-item.js');
-
+import { html, css } from 'lit-element';
+import { repeat } from 'lit-html/directives/repeat';
+import { connect } from 'pwa-helpers/connect-mixin';
+import '@polymer/paper-icon-button/paper-icon-button';
+import '@polymer/iron-icons/iron-icons';
+import '@polymer/paper-fab/paper-fab';
+import '@polymer/paper-button/paper-button';
+import '@polymer/paper-input/paper-input';
+import '@polymer/paper-dialog/paper-dialog';
+import '@polymer/paper-tooltip/paper-tooltip';
+import PageViewElement from './page-view-element';
+import './project-item';
 // This element is connected to the Redux store.
-import { store } from '../store.js';
-
+import { store } from '../store';
 // These are the actions needed by this element.
-import { getProjects, addProject, updateProject, deleteProject } from '../actions/projects.js';
-
+import {
+  getProjects,
+  addProject,
+  updateProject,
+  deleteProject,
+} from '../actions/projects';
 /* Load shared styles. All view elements use these styles */
-import { SharedStyles } from './shared-styles.js';
+import { SharedStyles } from './shared-styles';
 
 class Projects extends connect(store)(PageViewElement) {
-  _render(props) {
+  render() {
+    const {
+      projects,
+      projectToAdd,
+      projectToUpdate,
+      projectToDelete,
+    } = this;
     return html`
-      ${SharedStyles}
-      <style>
-        :host {
-          display: block;
-          height: 100%;
-        }
-
-        #container {
-          height: 100%;
-          padding: 0 0 30px 30px;
-        }
-
-        .flex {
-          @apply --layout-horizontal;
-          @apply --layout-wrap;
-        }
-
-        paper-fab {
-          z-index: 20;
-        }
-
-        paper-fab.blue {
-          --paper-fab-background: #448aff;
-          --paper-fab-keyboard-focus-background: #448aff;
-        }
-
-        paper-fab.red {
-          --paper-fab-background: #f44336;
-          --paper-fab-keyboard-focus-background: #b71c1c;
-        }
-
-        #addButton {
-          position: fixed;
-          bottom: 4.5rem;
-          right: 20px;
-        }
-
-        #dialog {
-          padding: 15px;
-        }
-
-        project-item {
-          padding: 30px 30px 0 0;
-        }
-
-        paper-input {
-          min-width: 280px;
-        }
-
-        paper-dialog {
-          padding: 15px;
-          border-radius: 5px;
-        }
-
-        .dialog-title {
-          margin: -15px;
-          padding: 24px 39px;
-          background-color: var(--app-secondary-color);
-          color: white;
-          border-top-left-radius: 5px;
-          border-top-right-radius: 5px;
-        }
-
-        p {
-          padding: 24px 24px 0 24px;
-          font-family: "font-roboto", sans-serif;
-        }
-
-        @media (min-width: 400px) {
-          project-item {
-            width: 100%;
-          }
-        }
-
-        @media (min-width: 750px) {
-          project-item {
-            width: 50%;
-          }
-        }
-
-        @media (min-width: 1280px) {
-          project-item {
-            width: 310px;
-          }
-        }
-      </style>
-
       <div id='container'>
-        <div class="flex">
-          ${repeat(props.projects, (item) => item.id, (item, index) => html`
-            <project-item key='${item}' index='${index}' project='${item}' on-edit-project='${(e) => { this._onEditProject(e) }}' on-delete-project='${(e) => { this._onDeleteProject(e) }}'></person-item>
+        <div class="projects-list">
+          ${repeat(projects, (item) => item.id, (item, index) => html`
+            <project-item key='${item.id}' index='${index}' .project='${item}' @edit-project='${(e) => { this._onEditProject(e); }}' @delete-project='${(e) => { this._onDeleteProject(e); }}'></person-item>
           `)}
-
-          <paper-fab id='addButton' icon='add' class='blue' on-click='${(e) => { this._openAddDialog() }}'></paper-fab>
-          <paper-tooltip for="addButton" position="top" animation-delay="0">Add Project</paper-tooltip>
         </div>
 
         <paper-dialog id='addDialog' with-backdrop>
           <h2 class='dialog-title'>CREATE PROJECT</h2>
-          <paper-input label='Name' value='${props.projectToAdd.name}' on-value-changed='${(e) => { this._setProjectToAddName(e.detail.value) }}'></paper-input>
+          <paper-input label='Name' value='${projectToAdd.name}' @value-changed='${(e) => { this._setProjectToAddName(e.detail.value); }}'></paper-input>
           <div class="buttons">
             <paper-button dialog-dismiss>Cancel</paper-button>
-            <paper-button autofocus on-click='${(e) => { store.dispatch(addProject(props.projectToAdd.name)) }}'>Add Project</paper-button>
+            <paper-button autofocus @click='${() => store.dispatch(addProject(projectToAdd.name))}'>Add Project</paper-button>
           </div>
         </paper-dialog>
 
         <paper-dialog id='editDialog' with-backdrop>
           <h2 class='dialog-title'>EDIT PROJECT</h2>
-          <paper-input label='Name' value='${props.projectToUpdate.name}' on-value-changed='${(e) => { this._setProjectToUpdateName(e.detail.value) }}'></paper-input>
+          <paper-input label='Name' value='${projectToUpdate.name}' @value-changed='${(e) => { this._setProjectToUpdateName(e.detail.value); }}'></paper-input>
           <div class="buttons">
             <paper-button dialog-dismiss>Cancel</paper-button>
-            <paper-button autofocus on-click='${(e) => { store.dispatch(updateProject(props.projectToUpdate.id, props.projectToUpdate.name)) }}'>Save</paper-button>
+            <paper-button autofocus @click='${() => store.dispatch(updateProject(projectToUpdate.id, projectToUpdate.name))}'>Save</paper-button>
           </div>
         </paper-dialog>
 
         <paper-dialog id='deleteDialog' with-backdrop>
           <h2 class='dialog-title'>DELETE PROJECT</h2>
-          <p>Delete ${props.projectToDelete.name.toUpperCase()}?</p>
+          <p>Delete ${projectToDelete.name.toUpperCase()}?</p>
           <div class="buttons">
             <paper-button dialog-dismiss>Cancel</paper-button>
-            <paper-button autofocus on-click='${(e) => { store.dispatch(deleteProject(props.projectToDelete.id)) }}'>Delete</paper-button>
+            <paper-button autofocus @click='${() => store.dispatch(deleteProject(projectToDelete.id))}'>Delete</paper-button>
           </div>
         </paper-dialog>
+
+        <span class="projects-controls">
+          <div class="projects-controls__btn btn-add">
+            <paper-icon-button slot="suffix" icon="add" @click='${this._openAddDialog}}'></paper-icon-button>
+          </div>
+        </span>
+
       </div>
     `;
   }
 
-  static get properties() { return {
+  static get properties() {
+    return {
       projects: Array,
       defaultProject: Object,
       projectToAdd: Object,
       projectToUpdate: Object,
       projectToDelete: Object,
       lastAddedProject: Object,
-      lastDeletedProject: Object
-    }
+      lastDeletedProject: Object,
+    };
   }
-
 
   constructor() {
     super();
@@ -170,41 +94,42 @@ class Projects extends connect(store)(PageViewElement) {
     this.projects = [];
     this.defaultProject = {
       id: -1,
-      name: ''
+      name: '',
     };
-    this.projectToAdd =  Object.assign({}, this.defaultProject);
-    this.projectToUpdate =  Object.assign({}, this.defaultProject);
-    this.projectToDelete =  Object.assign({}, this.defaultProject);
+    this.projectToAdd = { ...this.defaultProject };
+    this.projectToUpdate = { ...this.defaultProject };
+    this.projectToDelete = { ...this.defaultProject };
   }
 
   // This is called every time something is updated in the store.
-  _stateChanged(state) {
-    if (this.projects != state.projectsReducer.projects)
+  stateChanged(state) {
+    if (this.projects !== state.projectsReducer.projects) {
       this.projects = state.projectsReducer.projects;
+    }
 
-    if (this.lastAddedProject != state.projectsReducer.lastAddedProject) {
+    if (this.lastAddedProject !== state.projectsReducer.lastAddedProject) {
       this.lastAddedProject = state.projectsReducer.lastAddedProject;
-        if (Object.keys(this.lastAddedProject).length > 0) {
-          this._closeAddDialog();
+      if (Object.keys(this.lastAddedProject).length > 0) {
+        this._closeAddDialog();
       }
     }
 
-    if (this.lastUpdatedProject != state.projectsReducer.lastUpdatedProject) {
+    if (this.lastUpdatedProject !== state.projectsReducer.lastUpdatedProject) {
       this.lastUpdatedProject = state.projectsReducer.lastUpdatedProject;
-        if (Object.keys(this.lastUpdatedProject).length > 0) {
-          this._closeEditDialog();
+      if (Object.keys(this.lastUpdatedProject).length > 0) {
+        this._closeEditDialog();
       }
     }
 
-    if (this.lastDeletedProject != state.projectsReducer.lastDeletedProject) {
+    if (this.lastDeletedProject !== state.projectsReducer.lastDeletedProject) {
       this.lastDeletedProject = state.projectsReducer.lastDeletedProject;
-        if (Object.keys(this.lastDeletedProject).length > 0) {
-          this._closeDeleteDialog();
+      if (Object.keys(this.lastDeletedProject).length > 0) {
+        this._closeDeleteDialog();
       }
     }
   }
 
-  _firstRendered() {
+  firstUpdated() {
     store.dispatch(getProjects());
   }
 
@@ -217,7 +142,7 @@ class Projects extends connect(store)(PageViewElement) {
   }
 
   _openAddDialog() {
-    this.projectToAdd =  Object.assign({}, this.defaultProject);
+    this.projectToAdd = { ...this.defaultProject };
     this.shadowRoot.getElementById('addDialog').open();
   }
 
@@ -247,8 +172,120 @@ class Projects extends connect(store)(PageViewElement) {
     store.dispatch(getProjects());
   }
 
-  _notify(e) {
-    // this.dispatchEvent(new CustomEvent('notify', {detail: {level: e.detail.level, message: e.detail.message}}));
+  static get styles() {
+    return [
+      SharedStyles,
+      css`
+      :host {
+        display: block;
+        height: 100%;
+      }
+
+      #container {
+        height: 100%;
+        padding: 0 0 30px 30px;
+      }
+
+      .projects-list {
+        display: grid;
+        grid-template-columns: repeat(1, 1fr);
+      }
+
+      #dialog {
+        padding: 15px;
+      }
+
+      project-item {
+        padding: 30px 30px 0 0;
+      }
+
+      paper-input {
+        min-width: 280px;
+      }
+
+      paper-dialog {
+        padding: 15px;
+        border-radius: 5px;
+      }
+
+      .dialog-title {
+        margin: -15px;
+        padding: 24px 39px;
+        background-color: var(--app-secondary-color);
+        color: white;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+      }
+
+      p {
+        padding: 24px 24px 0 24px;
+        font-family: "font-roboto", sans-serif;
+      }
+
+      .projects-controls {
+        color: white;
+        position: fixed;
+        bottom: 32px;
+        left: 20px;
+        display: flex;
+      }
+
+      .projects-controls__btn {
+        background-color: black;
+        color: white;
+        opacity: 0.7;
+      }
+
+      .projects-controls__btn:hover {
+              opacity: 1;
+      }
+
+      .projects-controls__btn.btn-add {
+              border-radius: 5px;
+              margin-right: 8px;
+      }
+
+      .projects-controls__btn.btn-add:hover {
+              color: #448aff;
+      }
+
+      @media (min-width: 400px) {
+        .projects-list {
+          grid-template-columns: repeat(1, 1fr);
+        }
+      }
+
+      @media (min-width: 600px) {
+        .projects-list {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      @media (min-width: 1000px) {
+        .projects-list {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+
+      @media (min-width: 1200px) {
+        .projects-list {
+          grid-template-columns: repeat(4, 1fr);
+        }
+      }
+
+      @media (min-width: 1600px) {
+        .projects-list {
+          grid-template-columns: repeat(5, 1fr);
+        }
+      }
+
+      @media (min-width: 1800px) {
+        .projects-list {
+          grid-template-columns: repeat(6, 1fr);
+        }
+      }
+      `,
+    ];
   }
 }
 

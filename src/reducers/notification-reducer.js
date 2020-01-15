@@ -1,16 +1,16 @@
-import { SET_NOTIFICATION} from '../actions/notification.js';
+import { SET_NOTIFICATION } from '../actions/notification';
 
-const notification = (state = {notification: {}}, action) => {
+const notification = (state = { notification: {} }, action) => {
   switch (action.type) {
     case SET_NOTIFICATION:
       return {
         ...state,
-        notification: action.notification
+        notification: action.notification,
       };
 
     default:
       return state;
   }
-}
+};
 
 export default notification;

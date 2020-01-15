@@ -1,97 +1,21 @@
-import { LitElement, html } from '@polymer/lit-element';
-import {repeat} from "lit-html/lib/repeat"
-import { connect } from 'pwa-helpers/connect-mixin.js';
-
-// This element is connected to the Redux store.
-import { store } from '../store.js';
-
-/* Load shared styles. All view elements use these styles */
-import { SharedStyles } from './shared-styles.js';
-
-import { setNotification } from '../actions/notification.js';
+import { LitElement, html, css } from 'lit-element';
+import { repeat } from 'lit-html/directives/repeat';
+import { connect } from 'pwa-helpers/connect-mixin';
+import { store } from '../store';
+import { SharedStyles } from './shared-styles';
+import { setNotification } from '../actions/notification';
 
 /* Extend the base PolymerElement class */
 class TaskDialog extends connect(store)(LitElement) {
-  _render(props) {
-    var person = this._computePerson(props.people, props.task);
-    var project = this._computeProject(props.projects, props.task);
-    var from = this._computeFrom(props.task);
-    var to = this._computeTo(props.task);
-
-    return html`
-    ${SharedStyles}
-      <style>
-        paper-dialog {
-          padding: 15px;
-          border-radius: 5px;
-        }
-
-        paper-dropdown-menu,
-        paper-listbox {
-          width: 280px;
-        }
-
-        paper-item {
-          /* width: 100%; */
-        }
-
-        .dialog-title {
-          margin: -15px;
-          padding: 24px 39px;
-          background-color: var(--app-secondary-color);
-          color: white;
-          border-top-left-radius: 5px;
-          border-top-right-radius: 5px;
-        }
-
-        #fromDate,
-        #toDate {
-          width: 100%;
-        }
-      </style>
-
-      <paper-dialog id='${props.dialogId}' with-backdrop on-iron-overlay-closed='${(e) => { this._overlayClosed() }}'>
-        <h2 class='dialog-title'>${props.dialogTitle.toUpperCase()}</h2>
-        <paper-input id='taskName' label='Task Name' value='${props.task.name}' on-value-changed='${(e) => { this._nameChanged(e) }}'></paper-input>
-        <div class='flex'>
-          <paper-dropdown-menu label="Person">
-            <paper-listbox slot="dropdown-content" attr-for-selected='key' selected='${person}' on-selected-changed='${(e) => { this._personChanged(e) }}'>
-              ${repeat(props.people, (item) => item.id, (item, index) => html`
-                <paper-item key='${item}'>${item.name}</paper-item>
-              `)}
-            </paper-listbox>
-          </paper-dropdown-menu>
-        </div>
-        <div class='flex'>
-          <paper-dropdown-menu label="Project" >
-            <paper-listbox slot="dropdown-content" attr-for-selected='key' selected='${project}'  on-selected-changed='${(e) => { this._projectChanged(e) }}'>
-            ${repeat(props.projects, (item) => item.id, (item, index) => html`
-              <paper-item key='${item}'>${item.name}</paper-item>
-            `)}
-            </paper-listbox>
-          </paper-dropdown-menu>
-        </div>
-        <div class='flex'>
-          <vaadin-date-picker id='fromDate' label="FROM" value=${from} on-value-changed='${(e) => { this._fromChanged(e) }}'></vaadin-date-picker>
-        </div>
-        <div class='flex'>
-          <vaadin-date-picker id='toDate' label="TO" value=${to}  on-value-changed='${(e) => { this._toChanged(e) }}'></vaadin-date-picker>
-        </div>
-        <div class="buttons">
-          <paper-button dialog-dismiss>Cancel</paper-button>
-          <paper-button autofocus on-click='${(e) => { this._saveTask(person, project, from, to) }}'>Save Task</paper-button>
-        </div>
-      </paper-dialog>
-    `;
-  }
-
-  static get properties() { return {
+  static get properties() {
+    return {
       dialogTitle: String,
       dialogId: String,
       task: Object,
       people: Array,
-      projects: Array
-  }};
+      projects: Array,
+    };
+  }
 
   constructor() {
     super();
@@ -104,41 +28,26 @@ class TaskDialog extends connect(store)(LitElement) {
       personId: '',
       projectId: '',
       from: '',
-      to: ''
-    },
+      to: '',
+    };
     this.people = [];
     this.projects = [];
   }
 
-  _stateChanged(state) {
-  }
-
   _computePerson(people, task) {
-    var person = {};
-    if (task.personId != '') {
-      person = people.filter(function (person) {
-        return task.personId == person.id;
-      })[0];
-    }
-    return person;
+    return task.personId ? people.find((person) => (task.personId === person.id)) : {};
   }
 
   _computeProject(projects, task) {
-    var project = {};
-    if (task.projectId != '') {
-      project = projects.filter(function (project) {
-        return task.projectId == project.id;
-      })[0];
-    }
-    return project;
+    return task.projectId ? projects.find((project) => (task.projectId === project.id)) : {};
   }
 
   _computeFrom(task) {
-    return task.from  != '' ? moment(task.from).format('YYYY-MM-DD') : '';
+    return task.from ? moment(task.from).format('YYYY-MM-DD') : '';
   }
 
   _computeTo(task) {
-    return task.to  != '' ? moment(task.to).format('YYYY-MM-DD') : '';
+    return task.to ? moment(task.to).format('YYYY-MM-DD') : '';
   }
 
   open() {
@@ -149,20 +58,24 @@ class TaskDialog extends connect(store)(LitElement) {
     this.dispatchEvent(new CustomEvent('close-dialog'));
   }
 
+  _deleteClicked() {
+    this.dispatchEvent(new CustomEvent('delete-task'));
+  }
+
   close() {
     this.shadowRoot.getElementById(this.dialogId).close();
   }
 
   _nameChanged(e) {
-    this.name = e.detail.value
+    this.name = e.detail.value;
   }
 
   _personChanged(e) {
-    this.person = e.detail.value;
+    this.personId = e.detail.value;
   }
 
   _projectChanged(e) {
-    this.project = e.detail.value;
+    this.projectId = e.detail.value;
   }
 
   _fromChanged(e) {
@@ -173,33 +86,140 @@ class TaskDialog extends connect(store)(LitElement) {
     this.to = moment(e.detail.value).format('YYYY-MM-DD');
   }
 
+  _dismiss() {
+    this.shadowRoot.getElementById(this.dialogId).close();
+  }
+
   _saveTask() {
-    if (this.name != '' && this.person != {} && this.project != {} && this.from != '' && this.to != '') {
-      if (moment(this.from) < moment(this.to)) {
-        var task = {
-          id: this.task.id,
-          name: this.name,
-          personId: this.person.id,
-          projectId: this.project.id,
-          from: moment(this.from).toDate(),
-          to: moment(this.to).toDate()
+    const {
+      task: { id },
+      name,
+      personId,
+      projectId,
+      from,
+      to,
+    } = this;
+
+    if (name && personId && projectId && from && to) {
+      if (moment(from) < moment(to)) {
+        const task = {
+          id,
+          name,
+          personId,
+          projectId,
+          from: moment(from).toDate(),
+          to: moment(to).toDate(),
         };
         this.task = task;
-        this.dispatchEvent(new CustomEvent('save-task', {detail: {task: task}}));
+        this.dispatchEvent(new CustomEvent('save-task', { detail: { task } }));
       } else {
-        var level = 'warning';
-        var message = 'Please, make sure end time is after start time.';
-        // this.dispatchEvent(new CustomEvent('notify', {detail: {level: level, message: message}}));
+        const level = 'warning';
+        const message = 'Please, make sure end time is after start time.';
         store.dispatch(setNotification(level, message));
         console.log(message);
       }
     } else {
-      var level = 'warning';
-      var message = 'Please, make sure fields are not empty.';
-      // this.dispatchEvent(new CustomEvent('notify', {detail: {level: level, message: message}}));
+      const level = 'warning';
+      const message = 'Please, make sure fields are not empty.';
       store.dispatch(setNotification(level, message));
       console.log(message);
     }
+  }
+
+  render() {
+    const {
+      people,
+      projects,
+      task,
+      dialogId,
+      dialogTitle,
+    } = this;
+    const person = this._computePerson(people, task);
+    const project = this._computeProject(projects, task);
+    const from = this._computeFrom(task);
+    const to = this._computeTo(task);
+
+    return html`
+      <paper-dialog id='${dialogId}' with-backdrop @iron-overlay-closed='${this._overlayClosed}'>
+        <h2 class='dialog-title'>${dialogTitle.toUpperCase()}</h2>
+        <paper-input id='taskName' label='Task Name' value='${task.name}' @value-changed='${(e) => { this._nameChanged(e); }}'></paper-input>
+        <div class='flex'>
+          <paper-dropdown-menu label="Person">
+            <paper-listbox slot="dropdown-content" attr-for-selected='key' selected='${person.id}' @selected-changed='${(e) => { this._personChanged(e); }}'>
+              ${repeat(people, (item) => item.id, (item) => html`
+                <paper-item key='${item.id}'>${item.name}</paper-item>
+              `)}
+            </paper-listbox>
+          </paper-dropdown-menu>
+        </div>
+        <div class='flex'>
+          <paper-dropdown-menu label="Project" >
+            <paper-listbox slot="dropdown-content" attr-for-selected='key' selected='${project.id}'  @selected-changed='${(e) => { this._projectChanged(e); }}'>
+            ${repeat(projects, (item) => item.id, (item) => html`
+              <paper-item key='${item.id}'>${item.name}</paper-item>
+            `)}
+            </paper-listbox>
+          </paper-dropdown-menu>
+        </div>
+        <div class='flex'>
+          <vaadin-date-picker id='fromDate' label="FROM" value='${from}' @value-changed='${(e) => { this._fromChanged(e); }}'></vaadin-date-picker>
+        </div>
+        <div class='flex'>
+          <vaadin-date-picker id='toDate' label="TO" value='${to}'  @value-changed='${(e) => { this._toChanged(e); }}'></vaadin-date-picker>
+        </div>
+        <div class="buttons">
+          ${task.id ? html`<paper-icon-button icon='delete' class='delete-button' @click='${this._deleteClicked}}'></paper-icon-button>` : ''}
+          <paper-button class='text-button' @click='${this._dismiss}'>Cancel</paper-button>
+          <paper-button class='text-button' autofocus @click='${this._saveTask}'>Save Task</paper-button>
+        </div>
+      </paper-dialog>
+    `;
+  }
+
+  static get styles() {
+    return [
+      SharedStyles,
+      css`
+      paper-dialog {
+        padding: 15px;
+        border-radius: 5px;
+      }
+
+      paper-dropdown-menu,
+      paper-listbox {
+        width: 280px;
+      }
+
+      paper-item {
+        /* width: 100%; */
+      }
+
+      .dialog-title {
+        margin: -15px;
+        padding: 24px 39px;
+        background-color: var(--app-secondary-color);
+        color: white;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+      }
+
+      #fromDate,
+      #toDate {
+        width: 100%;
+      }
+
+      .delete-button {
+        position: absolute;
+        left: 24px;
+        margin-top: -3px;
+        color: #ec407a;
+      }
+
+      .text-button {
+        --paper-button-ink-color: #3f51b5;
+      }
+      `,
+    ];
   }
 }
 
