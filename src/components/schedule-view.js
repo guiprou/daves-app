@@ -1,25 +1,12 @@
 import { html, css } from 'lit-element';
 import { connect } from 'pwa-helpers/connect-mixin';
 import '@google-web-components/google-chart/google-chart';
-import '@polymer/iron-icon/iron-icon';
 import '@polymer/iron-icons/iron-icons';
 import '@polymer/iron-icons/social-icons';
-import '@polymer/iron-collapse/iron-collapse';
 import '@polymer/paper-button/paper-button';
-import '@polymer/paper-card/paper-card';
 import '@polymer/paper-dialog/paper-dialog';
-import '@polymer/paper-dropdown-menu/paper-dropdown-menu';
-import '@polymer/paper-fab/paper-fab';
-import '@polymer/paper-item/paper-icon-item';
-import '@polymer/paper-item/paper-item';
-import '@polymer/paper-item/paper-item-body';
-import '@polymer/paper-listbox/paper-listbox';
 import '@polymer/paper-spinner/paper-spinner';
-import '@polymer/paper-tooltip/paper-tooltip';
 import '@vaadin/vaadin-date-picker/vaadin-date-picker';
-import '@polymer/app-layout/app-drawer-layout/app-drawer-layout';
-import '@polymer/app-layout/app-drawer/app-drawer';
-import 'save-svg-as-png';
 import PageViewElement from './page-view-element';
 import './task-dialog';
 import './chart-controls';
@@ -445,12 +432,12 @@ class Schedule extends connect(store)(PageViewElement) {
           ${graphSection}
         </div>
         <chart-controls
-          minDate="${moment(filter.minDate).format('MMM YYYY')}"
-          maxDate="${moment(filter.maxDate).format('MMM YYYY')}"
-          @add-task="${this._addTask}"
-          @download-chart="${this._downloadChart}"
-          @increase="${this._increaseFilter}"
-          @decrease="${this._decreaseFilter}"
+          minDate='${moment(filter.minDate).format('MMM YYYY')}'
+          maxDate='${moment(filter.maxDate).format('MMM YYYY')}'
+          @add-task='${this._addTask}'
+          @download-chart='${this._downloadChart}'
+          @increase='${this._increaseFilter}'
+          @decrease='${this._decreaseFilter}'
         ></chart-controls>
 
         <task-dialog
@@ -495,24 +482,6 @@ class Schedule extends connect(store)(PageViewElement) {
           border-radius: 5px;
         }
 
-        app-drawer {
-
-        }
-
-        paper-card {
-          width: 100%;
-          /* height: 100%; */
-          border-radius: 5px;
-          --paper-card-header-color: #fff;
-          --paper-card-header: {
-            background-color: var(--app-secondary-color);
-          };
-          --paper-card-header-text: {
-            font-size: 20px;
-          };
-          color: var(--app-secondary-color);
-        }
-
         .schedule-graph-card {
           height: 100%;
         }
@@ -538,39 +507,10 @@ class Schedule extends connect(store)(PageViewElement) {
           height: 100%;
         }
 
-        paper-card.task-details {
-          position: sticky;
-          top: 20px;
-        }
-
         google-chart {
           width: 100%;
            /* max-height: 700px; */
           /* margin: 24px auto; */
-        }
-
-        paper-fab {
-          z-index: 20;
-        }
-
-        paper-fab.blue {
-          --paper-fab-background: #448aff;
-          --paper-fab-keyboard-focus-background: #448aff;
-        }
-
-        paper-fab.red {
-          --paper-fab-background: #f44336;
-          --paper-fab-keyboard-focus-background: #b71c1c;
-        }
-
-        paper-fab.amber {
-          --paper-fab-background: #ffb300;
-          --paper-fab-keyboard-focus-background: #ffb300;
-        }
-
-        paper-fab.teal {
-          --paper-fab-background: #009688;
-          --paper-fab-keyboard-focus-background: #009688;
         }
 
         #addButton {
@@ -629,13 +569,6 @@ class Schedule extends connect(store)(PageViewElement) {
 
        .card-actions {
          text-align: right;
-       }
-
-       paper-item,
-       paper-icon-item {
-        --paper-item-focused-before: {
-           background: none;
-         };
        }
 
        .no-task {

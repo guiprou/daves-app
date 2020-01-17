@@ -3,11 +3,9 @@ import { repeat } from 'lit-html/directives/repeat';
 import { connect } from 'pwa-helpers/connect-mixin';
 import '@polymer/paper-icon-button/paper-icon-button';
 import '@polymer/iron-icons/iron-icons';
-import '@polymer/paper-fab/paper-fab';
 import '@polymer/paper-button/paper-button';
 import '@polymer/paper-input/paper-input';
 import '@polymer/paper-dialog/paper-dialog';
-import '@polymer/paper-tooltip/paper-tooltip';
 import PageViewElement from './page-view-element';
 import './project-item';
 // This element is connected to the Redux store.

@@ -4,12 +4,17 @@
   "description": "Dave's App",
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#3f51b5",
-  "background_color": "#3f51b5",
+  "theme_color": "#f5f6fa",
+  "background_color": "#f5f6fa",
   "icons": [
     {
       "src": "images/dapp_icon.ico",
       "sizes": "256x256",
+      "type": "image/png"
+    },
+    {
+      "src": "images/dapp_icon.png",
+      "sizes": "512x512",
       "type": "image/png"
     }
   ]

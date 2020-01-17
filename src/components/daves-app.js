@@ -54,7 +54,7 @@ class DavesApp extends connect(store)(LitElement) {
       message: '',
       duration: 3000,
     };
-    this.logged = true;
+    this.logged = false;
   }
 
   firstUpdated() {
@@ -99,10 +99,9 @@ class DavesApp extends connect(store)(LitElement) {
       _drawerOpened,
       logged,
     } = this;
-
     const hidden = logged ? 'visible' : 'hidden';
     return html`
-    <login-dialog on-logged-change='${(e) => { this.loggedChanged(e); }}'></login-dialog>
+    <login-dialog @logged-change='${(e) => { this.loggedChanged(e); }}'></login-dialog>
 
     <!-- Header -->
     <app-header condenses reveals effects="waterfall">

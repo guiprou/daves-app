@@ -16,7 +16,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
 
     <title>Dapp</title>
-    <meta name="description" content="Dave's description">
+    <meta name="description" content="Dave's App">
 
     <!--
       The `<base>` tag below is present to support two advanced deployment options:
@@ -34,7 +34,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     <link rel="manifest" href="manifest.json">
 
     <!-- See https://goo.gl/qRE0vM -->
-    <meta name="theme-color" content="#3f51b5">
+    <meta name="theme-color" content="#f5f6fa">
 
     <!-- Add to homescreen for Chrome on Android. Fallback for manifest.json -->
     <meta name="mobile-web-app-capable" content="yes">
@@ -43,59 +43,19 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     <!-- Add to homescreen for Safari on iOS -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Dave's App">
+    <meta name="apple-mobile-web-app-title" content="Dapp">
 
     <!-- Homescreen icons -->
-    <link rel="apple-touch-icon" href="images/manifest/icon-48x48.png">
-    <link rel="apple-touch-icon" sizes="72x72" href="images/manifest/icon-72x72.png">
-    <link rel="apple-touch-icon" sizes="96x96" href="images/manifest/icon-96x96.png">
-    <link rel="apple-touch-icon" sizes="144x144" href="images/manifest/icon-144x144.png">
-    <link rel="apple-touch-icon" sizes="192x192" href="images/manifest/icon-192x192.png">
+    <link rel="apple-touch-icon" href="images/dapp-icon.ico">
+    <link rel="apple-touch-icon" sizes="72x72" href="images/dapp-icon.ico">
+    <link rel="apple-touch-icon" sizes="96x96" href="images/dapp-icon.ico">
+    <link rel="apple-touch-icon" sizes="144x144" href="images/dapp-icon.ico">
+    <link rel="apple-touch-icon" sizes="192x192" href="images/dapp-icon.ico">
 
     <!-- Tile icon for Windows 8 (144x144 + tile color) -->
-    <meta name="msapplication-TileImage" content="images/manifest/icon-144x144.png">
-    <meta name="msapplication-TileColor" content="#3f51b5">
+    <meta name="msapplication-TileImage" content="images/dapp-icon.ico">
+    <meta name="msapplication-TileColor" content="#f5f6fa">
     <meta name="msapplication-tap-highlight" content="no">
-
-    <!-- Default twitter cards -->
-    <meta name="twitter:card" content="summary">
-    <meta name="twitter:site" content="@username">
-    <meta property="og:type" content="website">
-    <meta property="og:site_name" content="daves-app">
-    <meta property="og:image" content="images/manifest/icon-144x144.png" />
-
-    <!-- Parse -->
-    <script src="node_modules/parse/dist/parse.min.js"></script>
-
-    <!-- Ensure Web Animations polyfill is loaded since neon-animation 2.0 doesn't import it -->
-    <script src="node_modules/web-animations-js/web-animations-next.min.js"></script>
-
-    <!-- Charts api call -->
-    <script src="https://www.gstatic.com/charts/loader.js"></script>
-
-    <!-- Moment.js -->
-    <script src="node_modules/moment/min/moment.min.js"></script>
-
-    <script>
-      // Load and register pre-caching Service Worker
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-          navigator.serviceWorker.register('service-worker.js', {
-            scope: '/',
-          });
-        });
-      }
-
-      // Redux assumes `process.env.NODE_ENV` exists in the ES module build.
-      // https://github.com/reactjs/redux/issues/2907
-      window.process = { env: { NODE_ENV: 'production' } };
-      var appId = 'KMZf9UE8MRDrbzKx9yf6SZA2u5Be2kIzzB55Yg9Y';
-      localStorage.setItem('appId', appId);
-
-      // Parse: connect to remote backend
-      Parse.initialize(appId, "p25NelX6hn2hS70EIgV5J50bwBH4pX3qUTbaD7Vy"); //PASTE HERE YOUR Back4App APPLICATION ID AND YOUR JavaScript KEY
-      Parse.serverURL = "https://parseapi.back4app.com/";
-    </script>
 
     <!-- Add any global styles for body, document, etc. -->
     <style>
@@ -120,9 +80,46 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     <noscript>
       Please enable JavaScript to view this website.
     </noscript>
+    <!-- Parse -->
+    <script src="node_modules/parse/dist/parse.min.js"></script>
+
+    <!-- Ensure Web Animations polyfill is loaded since neon-animation 2.0 doesn't import it -->
+    <script src="node_modules/web-animations-js/web-animations-next.min.js"></script>
+
+    <!-- Charts api call -->
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
+
+    <!-- Moment.js -->
+    <script src="../node_modules/moment/min/moment.min.js"></script>
+
+    <!-- Svg to png -->
+    <script src="../node_modules/save-svg-as-png/lib/saveSvgAsPng.js"></script>
+
     <!-- Load webcomponents-loader.js to check and load any polyfills your browser needs -->
     <script src="node_modules/@webcomponents/webcomponentsjs/webcomponents-loader.js"></script>
+
     <!-- Built with love using PWA Starter Kit -->
     <script type="module" src="src/components/daves-app.js" crossorigin></script>
+
+    <script>
+      // Load and register pre-caching Service Worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('service-worker.js', {
+            scope: '/',
+          });
+        });
+      }
+
+      // Redux assumes `process.env.NODE_ENV` exists in the ES module build.
+      // https://github.com/reactjs/redux/issues/2907
+      window.process = { env: { NODE_ENV: 'production' } };
+      var appId = 'KMZf9UE8MRDrbzKx9yf6SZA2u5Be2kIzzB55Yg9Y';
+      localStorage.setItem('appId', appId);
+
+      // Parse: connect to remote backend
+      Parse.initialize(appId, "p25NelX6hn2hS70EIgV5J50bwBH4pX3qUTbaD7Vy"); //PASTE HERE YOUR Back4App APPLICATION ID AND YOUR JavaScript KEY
+      Parse.serverURL = "https://parseapi.back4app.com/";
+    </script>
   </body>
 </html>

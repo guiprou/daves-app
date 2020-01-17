@@ -2,13 +2,9 @@ import { html, css } from 'lit-element';
 import { repeat } from 'lit-html/directives/repeat';
 import { connect } from 'pwa-helpers/connect-mixin';
 import '@polymer/paper-icon-button/paper-icon-button';
-import '@polymer/iron-icons/iron-icons';
-import '@polymer/paper-fab/paper-fab';
 import '@polymer/paper-button/paper-button';
 import '@polymer/paper-input/paper-input';
 import '@polymer/paper-dialog/paper-dialog';
-import '@polymer/paper-tooltip/paper-tooltip';
-import '@polymer/iron-selector/iron-selector';
 import PageViewElement from './page-view-element';
 import './person-item';
 // This element is connected to the Redux store.
@@ -199,21 +195,6 @@ class People extends connect(store)(PageViewElement) {
         .people-list {
           display: grid;
           grid-template-columns: repeat(1, 1fr);
-        }
-
-        paper-fab {
-          z-index: 20;
-        }
-
-        paper-fab.blue {
-          --paper-fab-background: #448aff;
-          --paper-fab-keyboard-focus-background: #448aff;
-        }
-
-        #addButton {
-          position: fixed;
-          bottom: 24px;
-          right: 20px;
         }
 
         #dialog {

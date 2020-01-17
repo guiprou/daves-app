@@ -1,10 +1,8 @@
 import { LitElement, html, css } from 'lit-element';
 import { connect } from 'pwa-helpers/connect-mixin';
-import '@polymer/iron-icons/iron-icons';
 import '@polymer/paper-button/paper-button';
 import '@polymer/paper-input/paper-input';
 import '@polymer/paper-dialog/paper-dialog';
-import '@polymer/paper-tooltip/paper-tooltip';
 import { store } from '../store';
 import { login } from '../actions/login';
 import loginReducer from '../reducers/login-reducer';
@@ -26,13 +24,16 @@ class LoginDialog extends connect(store)(LitElement) {
     this.password = '';
   }
 
-  firsUpdated() {
+  firstUpdated() {
     const appId = localStorage.getItem('appId');
     const user = localStorage.getItem(`Parse/${appId}/currentUser`);
+    let logged = false;
     if (!user) {
       this._openLogin();
-      this.dispatchEvent(new CustomEvent('logged-change', { detail: { logged: false } }));
+    } else {
+      logged = true;
     }
+    this.dispatchEvent(new CustomEvent('logged-change', { detail: { logged } }));
   }
 
   _setName(name) {

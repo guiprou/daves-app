@@ -1,5 +1,5 @@
 import { html } from 'lit-element';
-import { PageViewElement } from './page-view-element';
+import PageViewElement from './page-view-element';
 import { SharedStyles } from './shared-styles';
 
 class MyView404 extends PageViewElement {

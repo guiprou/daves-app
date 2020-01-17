@@ -18,8 +18,7 @@ const replace = require('replace');
 /**
  * Cleans the PRPL server build directory (<project folder>/server/build)
  */
-gulp.task('clean:prpl-server', () =>
-  del`server/build`);
+gulp.task('clean:prpl-server', () => del`server/build`);
 
 /**
  * Builds the PRPL-server-ready version of the PWA, auto setting the base path
