@@ -103,7 +103,7 @@ class TaskDialog extends connect(store)(LitElement) {
       to,
     } = this;
 
-    if (name && personId && projectId && from && to) {
+    if (name && personId !== 'undefined' && projectId !== 'undefined' && from && to) {
       if (moment(from) < moment(to)) {
         const task = {
           id,
